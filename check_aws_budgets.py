@@ -31,7 +31,7 @@ def fetch_budget(name):
         client = boto3.client('budgets')
         return client.describe_budget(AccountId=caller['Account'], BudgetName=name)['Budget']
     except (BotoCoreError, ClientError) as err:
-        print("UNKNOWN - {}".format(err))
+        print(f"UNKNOWN - {err}")
         sys.exit(STATE_UNKNOWN)
 
 
@@ -51,7 +51,7 @@ def fetch_budgets():
         return budgets
 
     except BotoCoreError as err:
-        print("UNKNOWN - {}".format(err))
+        print(f"UNKNOWN - {err}")
         sys.exit(STATE_UNKNOWN)
 
 
@@ -70,13 +70,27 @@ def get_overspend(budgets):
         limit = float(budget['BudgetLimit']['Amount'])
         try:
             forecast = float(budget['CalculatedSpend']['ForecastedSpend']['Amount'])
-            res[forecast > limit].append("{}(fcst:{:.2f};limit:{:.2f})".format(
-                name, forecast, limit))
+            res[forecast > limit].append(f"{name}(fcst:{forecast:.2f};limit:{limit:.2f})")
         except KeyError:
             actual = float(budget['CalculatedSpend']['ActualSpend']['Amount'])
-            res[actual > limit].append("{}(act:{:.2f};limit:{:.2f})".format(
-                name, actual, limit))
+            res[actual > limit].append("{name}(act:{actual:.2f};limit:{limit:.2f})")
     return res
+
+
+def get_perfdata(budgets: list) -> str:
+    """Return performance data string
+    :param budgets: list of budgets
+    :return: performance data
+    """
+    perfdata = []
+    for budget in budgets:
+        label = budget["BudgetName"]
+        value = budget["CalculatedSpend"]["ActualSpend"]["Amount"]
+        uom = budget["CalculatedSpend"]["ActualSpend"]["Unit"]
+        limit = budget["BudgetLimit"]["Amount"]
+
+        perfdata.append(f"'{label}'={value}{uom};{limit};{limit}")
+    return f"| {' '.join(perfdata)}"
 
 
 def main():
@@ -92,11 +106,13 @@ def main():
         budgets = fetch_budgets()
 
     overspend = get_overspend(budgets)
+    perfadata = get_perfdata(budgets)
+
     if overspend[True]:
-        print("Budget forecast exceeds limit: {}".format(', '.join(overspend[True])))
+        print(f"Budget forecast exceeds limit: {', '.join(overspend[True])}{perfadata}")
         sys.exit(STATE_CRIT)
 
-    print("Budgets forecast within limit: {}".format(', '.join(overspend[False])))
+    print(f"Budgets forecast within limit: {', '.join(overspend[False])}{perfadata}")
     sys.exit(STATE_OK)
 
 
