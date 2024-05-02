@@ -73,7 +73,7 @@ def get_overspend(budgets):
             res[forecast > limit].append(f"{name}(fcst:{forecast:.2f};limit:{limit:.2f})")
         except KeyError:
             actual = float(budget['CalculatedSpend']['ActualSpend']['Amount'])
-            res[actual > limit].append("{name}(act:{actual:.2f};limit:{limit:.2f})")
+            res[actual > limit].append(f"{name}(act:{actual:.2f};limit:{limit:.2f})")
     return res
 
 
